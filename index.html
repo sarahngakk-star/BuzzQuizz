@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BuzzQuiz FR — Choisis un premier rendez-vous</title>
+<meta name="description" content="8 questions rapides — découvre quel type de partenaire tu attires. Mobile-friendly.">
+<style>
+  :root{
+    --accent:#ff6a00; --accent-2:#ff8a3d; --muted:#666; --bg:#fff; --card-radius:14px; --maxw:980px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial;color:#111}
+  .wrap{max-width:var(--maxw);margin:28px auto;padding:18px}
+  .card{background:#fff;border-radius:var(--card-radius);box-shadow:0 12px 30px rgba(0,0,0,0.06);padding:16px}
+  .top{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .logo{font-weight:900;color:var(--accent);font-size:20px}
+  .title{margin:0;font-size:18px}
+  .lead{color:var(--muted);font-size:13px;margin-top:6px}
+  .progress-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .progress{flex:1;height:10px;background:#f1f1f1;border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .45s}
+  .progLabel{min-width:72px;text-align:right;color:var(--muted);font-size:13px}
+  .q-title{font-weight:700;margin-bottom:10px}
+  .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+  .option{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px;cursor:pointer;display:flex;align-items:center;transition:transform .12s}
+  .option:hover{transform:translateY(-6px);box-shadow:0 14px 40px rgba(0,0,0,0.06)}
+  .option.selected{border-color:var(--accent);box-shadow:0 18px 50px rgba(255,106,0,0.10)}
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+  .btn{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+  .btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .result{display:none;margin-top:18px}
+  .result-header{display:flex;gap:16px;align-items:center}
+  .result-image{width:160px;height:110px;border-radius:10px;overflow:hidden;flex-shrink:0}
+  .result-image img{width:100%;height:100%;object-fit:cover;display:block}
+  .result-body{flex:1}
+  .result-title{font-size:18px;margin:0 0 8px}
+  .result-text{color:var(--muted);line-height:1.45}
+  .share-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .share-btn{padding:8px 12px;border-radius:10px;border:1px solid #eee;background:#fafafa;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .feedback-badge{position:fixed;right:18px;bottom:18px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:10px 14px;border-radius:999px;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;z-index:2000}
+  .feedback-badge.show{opacity:1;transform:none}
+  @media(max-width:760px){ .result-header{flex-direction:column;align-items:flex-start} .result-image{width:100%;height:220px} .top{flex-direction:column;align-items:flex-start} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="logo">BuzzQuiz FR</div>
+      <div>
+        <h1 class="title">Choisis un premier rendez-vous — découvre qui tu attires</h1>
+        <div class="lead">8 questions rapides — mobile friendly — partage ton résultat.</div>
+      </div>
+    </div>
+
+    <section id="quizCard" class="card" aria-live="polite">
+      <div class="progress-row">
+        <div class="progress"><div id="bar" class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
+        <div id="progLabel" class="progLabel">1 / 8</div>
+      </div>
+
+      <div id="questionArea"></div>
+
+      <div class="nav">
+        <button id="prevBtn" class="btn ghost" type="button">← Précédent</button>
+        <div style="display:flex;gap:8px">
+          <button id="nextBtn" class="btn" type="button">Suivant →</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultCard" class="card result" aria-hidden="true">
+      <div class="result-header">
+        <div class="result-image"><img id="resultImg" src="" alt=""></div>
+        <div class="result-body">
+          <h2 id="resultTitle" class="result-title"></h2>
+          <p id="resultText" class="result-text"></p>
+
+          <div class="share-row" role="group" aria-label="Partager">
+            <button id="shareWhats" class="share-btn">🟢 WhatsApp</button>
+            <button id="shareX" class="share-btn">🐦 X</button>
+            <button id="shareFb" class="share-btn">📘 Facebook</button>
+            <button id="shareCopy" class="share-btn">🔗 Copier</button>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button id="restartBtn" class="btn ghost">Refaire le quiz</button>
+            <button id="reviewBtn" class="btn">Voir mes réponses</button>
+          </div>
+        </div>
+      </div>
+      <div id="reviewArea" style="margin-top:12px"></div>
+    </section>
+
+  </div>
+
+  <div id="feedback" class="feedback-badge" aria-hidden="true">Nice ✅</div>
+
+<script>
+/* Quiz autonome - coller tel quel dans index.html */
+document.addEventListener('DOMContentLoaded', function(){
+
+  const PROFILES = ['romantique','fetard','serieux','aventurier','mysterieux'];
+  const QUESTIONS = [
+    { q: "Où aimerais-tu avoir ton premier rendez-vous ?", a:[
+      {t:'Un petit café cosy', score:[2,0,1,0,0]},
+      {t:'Une balade dans un parc', score:[2,0,0,1,0]},
+      {t:'Un dîner chic', score:[1,0,2,0,0]},
+      {t:'Une activité originale (escape, bowling)', score:[0,2,0,1,0]},
+      {t:'Chez moi, tranquille', score:[1,0,0,0,2]}
+    ]},
+    { q: "Comment t'habilles-tu pour un premier rendez-vous ?", a:[
+      {t:'Décontracté mais soigné', score:[1,2,0,1,0]},
+      {t:'Plutôt habillé / chic', score:[1,0,2,0,0]},
+      {t:'Un look tendre et mignon', score:[3,0,0,0,0]},
+      {t:'Coloré et fun', score:[0,3,0,1,0]},
+      {t:'Simple et naturel', score:[1,0,0,2,1]}
+    ]},
+    { q: "Quel type de repas préfères-tu ?", a:[
+      {t:'Burger et frites', score:[0,2,0,1,0]},
+      {t:'Sushi / finger food', score:[1,0,1,0,1]},
+      {t:'Repas gastronomique', score:[1,0,3,0,0]},
+      {t:'Dessert et café', score:[2,0,0,0,0]},
+      {t:'Juste un verre', score:[0,2,0,0,1]}
+    ]},
+    { q: "Quel est ton état d'esprit pendant le rendez-vous ?", a:[
+      {t:'Timide et attentionné', score:[2,0,1,0,0]},
+      {t:'Confiant et charmeur', score:[0,2,0,0,1]},
+      {t:'Détendu et drôle', score:[0,2,0,1,0]},
+      {t:'Posé et sérieux', score:[0,0,3,0,0]},
+      {t:'Secret et mystérieux', score:[0,0,0,0,3]}
+    ]},
+    { q: "Quelle ambiance préfères-tu ?", a:[
+      {t:'Intime et tamisée', score:[2,0,1,0,1]},
+      {t:'Animée et vivante', score:[0,3,0,1,0]},
+      {t:'Romantique', score:[3,0,0,0,0]},
+      {t:'Originale et surprenante', score:[0,1,0,2,1]},
+      {t:'Peu importe si on rigole', score:[0,2,0,1,0]}
+    ]},
+    { q: "Après le rendez-vous, que fais-tu ?", a:[
+      {t:'Marcher et discuter', score:[2,0,0,1,0]},
+      {t:'Aller en soirée', score:[0,3,0,0,0]},
+      {t:'Regarder un film au calme', score:[1,0,2,0,0]},
+      {t:'Planifier une excursion / aventure', score:[0,0,0,3,0]},
+      {t:'Rester mystérieux et partir', score:[0,0,0,0,3]}
+    ]},
+    { q: "Qu'est-ce qui t'attire le plus chez quelqu'un ?", a:[
+      {t:'La sensibilité et l'empathie', score:[3,0,0,0,0]},
+      {t:'L'énergie et la joie de vivre', score:[0,3,0,0,0]},
+      {t:'La fiabilité et la maturité', score:[0,0,3,0,0]},
+      {t:'La curiosité et l'envie de voyager', score:[0,0,0,3,0]},
+      {t:'Le mystère et l'aura énigmatique', score:[0,0,0,0,3]}
+    ]},
+    { q: "Si tu devais résumer ton idéal en un mot, ce serait :", a:[
+      {t:'Tendresse', score:[3,0,0,0,0]},
+      {t:'Folie', score:[0,3,0,0,0]},
+      {t:'Stabilité', score:[0,0,3,0,0]},
+      {t:'Aventure', score:[0,0,0,3,0]},
+      {t:'Mystère', score:[0,0,0,0,3]}
+    ]}
+  ];
+
+  const RESULTS_TEXT = {
+    romantique: {
+      title: "Tu attires le/la romantique",
+      text: "Par ta douceur et ta capacité à créer un climat intime, tu attires les âmes sensibles. Ton idéal privilégie les petites attentions et les conversations vraies — c'est ce qui nourrit une connexion profonde."
+    },
+    fetard: {
+      title: "Tu attires le/la fêtard(e)",
+      text: "Ton énergie et ta joie de vivre séduisent les personnes qui aiment s'amuser. Elles veulent des soirées, des rires et des moments spontanés — avec toi, l'ambiance est garantie."
+    },
+    serieux: {
+      title: "Tu attires le/la sérieux(se)",
+      text: "Ta stabilité et ta maturité rassurent: ceux/celles attirés par toi recherchent une relation posée, fiable, fondée sur la confiance et des projets à long terme."
+    },
+    aventurier: {
+      title: "Tu attires le/la aventurier(ère)",
+      text: "Ton goût pour l'aventure attire ceux qui veulent découvrir le monde. Que ce soit une escapade ou une découverte locale, ces personnes veulent créer des souvenirs intenses à tes côtés."
+    },
+    mysterieux: {
+      title: "Tu attires le/la mystérieux(se)",
+      text: "Ton aura discrète et énigmatique intrigue. Les personnes attirées par toi aiment deviner peu à peu ta personnalité — le mystère rend la relation passionnante."
+    }
+  };
+
+  // images publiques (démo). Tu pourras remplacer par assets/tes_images.jpg après upload.
+  const RESULT_IMAGES = {
+    romantique: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1200&q=80&auto=format&fit=crop",
+    fetard: "https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?w=1200&q=80&auto=format&fit=crop",
+    serieux: "https://images.unsplash.com/photo-1514894786116-3c25f8f4e8d1?w=1200&q=80&auto=format&fit=crop",
+    aventurier: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80&auto=format&fit=crop",
+    mysterieux: "https://images.unsplash.com/photo-1503264116251-35a269479413?w=1200&q=80&auto=format&fit=crop"
+  };
+
+  // state + elements
+  let state = { index: 0, answers: new Array(QUESTIONS.length).fill(null) };
+  const els = {
+    questionArea: document.getElementById('questionArea'),
+    bar: document.getElementById('bar'),
+    progLabel: document.getElementById('progLabel'),
+    prevBtn: document.getElementById('prevBtn'),
+    nextBtn: document.getElementById('nextBtn'),
+    quizCard: document.getElementById('quizCard'),
+    resultCard: document.getElementById('resultCard'),
+    resultImg: document.getElementById('resultImg'),
+    resultTitle: document.getElementById('resultTitle'),
+    resultText: document.getElementById('resultText'),
+    shareWhats: document.getElementById('shareWhats'),
+    shareX: document.getElementById('shareX'),
+    shareFb: document.getElementById('shareFb'),
+    shareCopy: document.getElementById('shareCopy'),
+    restartBtn: document.getElementById('restartBtn'),
+    reviewBtn: document.getElementById('reviewBtn'),
+    reviewArea: document.getElementById('reviewArea'),
+    feedback: document.getElementById('feedback')
+  };
+
+  function updateProgress(i){
+    const pct = Math.round(((i+1)/QUESTIONS.length) * 100);
+    els.bar.style.width = pct + "%";
+    els.bar.setAttribute('aria-valuenow', pct);
+    els.progLabel.textContent = (i+1) + " / " + QUESTIONS.length;
+  }
+
+  function clearNode(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+
+  function renderQuestion(i){
+    state.index = i;
+    clearNode(els.questionArea);
+    const Q = QUESTIONS[i];
+
+    const title = document.createElement('div'); title.className = 'q-title'; title.textContent = "Q" + (i+1) + ". " + Q.q;
+    els.questionArea.appendChild(title);
+
+    const opts = document.createElement('div'); opts.className = 'options';
+    Q.a.forEach((opt, idx) => {
+      const b = document.createElement('button'); b.type='button'; b.className='option'; b.tabIndex=0; b.textContent = opt.t;
+      if(state.answers[i] === idx) b.classList.add('selected');
+
+      b.addEventListener('click', () => {
+        Array.from(opts.children).forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        state.answers[i] = idx;
+        showFeedback(opt, b);
+        setTimeout(() => {
+          if(state.index < QUESTIONS.length - 1) renderQuestion(state.index + 1);
+        }, 300);
+      });
+
+      b.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); }});
+      opts.appendChild(b);
+    });
+
+    els.questionArea.appendChild(opts);
+    updateProgress(i);
+    els.prevBtn.style.display = i === 0 ? 'none' : 'inline-block';
+    els.nextBtn.textContent = i === QUESTIONS.length - 1 ? 'Voir le résultat' : 'Suivant →';
+    const first = opts.querySelector('.option'); if(first) first.focus();
+    sendHeight();
+  }
+
+  function showFeedback(opt, btn){
+    // micro-badge visible en bas à droite
+    const badge = els.feedback;
+    const scoreIdx = opt.score.indexOf(Math.max(...opt.score));
+    const labels = ['Tendresse','Folie','Stabilité','Aventure','Mystère'];
+    badge.textContent = (labels[scoreIdx] || '') + " • " + opt.t;
+    badge.classList.add('show'); badge.setAttribute('aria-hidden','false');
+    setTimeout(()=>{ badge.classList.remove('show'); badge.setAttribute('aria-hidden','true'); }, 900);
+  }
+
+  function computeResult(){
+    if(state.answers.some(a => a === null)){ alert('Merci de répondre à toutes les questions.'); return; }
+    const totals = {romantique:0,fetard:0,serieux:0,aventurier:0,mysterieux:0};
+    for(let i=0;i<QUESTIONS.length;i++){
+      const ai = state.answers[i]; const sc = QUESTIONS[i].a[ai].score;
+      PROFILES.forEach((p, idx) => totals[p] += sc[idx] || 0);
+    }
+    // pick best
+    let best = Object.keys(totals).reduce((a,b) => totals[a] >= totals[b] ? a : b);
+    const maxv = Math.max(...Object.values(totals));
+    const tied = Object.keys(totals).filter(k => totals[k] === maxv);
+    if(tied.length > 1){
+      const lastIdx = state.answers.length - 1;
+      const lastScores = QUESTIONS[lastIdx].a[state.answers[lastIdx]].score;
+      let winner = tied[0]; let winv = -1;
+      tied.forEach(t => { const id = PROFILES.indexOf(t); const v = lastScores[id] || 0; if(v > winv){ winv = v; winner = t; }});
+      best = winner;
+    }
+    showResult(best);
+  }
+
+  function showResult(key){
+    els.quizCard.style.display = 'none';
+    els.resultCard.style.display = 'block';
+    els.resultCard.setAttribute('aria-hidden','false');
+    els.resultImg.src = RESULT_IMAGES[key] || RESULT_IMAGES['romantique'];
+    els.resultTitle.textContent = RESULTS_TEXT[key].title;
+    els.resultText.textContent = RESULTS_TEXT[key].text;
+
+    const shareText = RESULTS_TEXT[key].title + " — " + RESULTS_TEXT[key].text;
+    const pageUrl = location.href;
+
+    if(els.shareWhats) els.shareWhats.onclick = () => window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(shareText + '\n' + pageUrl), '_blank','noopener');
+    if(els.shareX) els.shareX.onclick = () => window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(pageUrl), '_blank','noopener');
+    if(els.shareFb) els.shareFb.onclick = () => window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl) + '&quote=' + encodeURIComponent(shareText), '_blank','noopener');
+    if(els.shareCopy) els.shareCopy.onclick = () => { navigator.clipboard ? navigator.clipboard.writeText(shareText + ' ' + pageUrl).then(()=>alert('Lien copié !')) : prompt('Copie ce texte:', shareText + ' ' + pageUrl); };
+
+    // build review area content (hidden until user clicks "Voir mes réponses")
+    buildReview();
+    sendHeight();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function buildReview(){
+    if(!els.reviewArea) return;
+    els.reviewArea.innerHTML = '';
+    QUESTIONS.forEach((q, i) => {
+      const div = document.createElement('div'); div.style.border='1px dashed #eee'; div.style.padding='10px'; div.style.marginBottom='8px'; div.style.borderRadius='8px';
+      const h = document.createElement('div'); h.style.fontWeight='700'; h.textContent = 'Q' + (i+1) + '. ' + q.q;
+      const sel = document.createElement('div'); sel.textContent = '→ ' + (state.answers[i] !== null ? q.a[state.answers[i]].t : 'Non répondu');
+      const edit = document.createElement('button'); edit.className='btn ghost'; edit.style.marginLeft='8px'; edit.textContent='Modifier'; edit.onclick = () => { els.resultCard.style.display='none'; els.quizCard.style.display='block'; renderQuestion(i); };
+      div.appendChild(h); div.appendChild(sel); div.appendChild(edit); els.reviewArea.appendChild(div);
+    });
+  }
+
+  // navigation
+  els.prevBtn.onclick = () => { if(state.index > 0) renderQuestion(state.index - 1); };
+  els.nextBtn.onclick = () => {
+    if(state.answers[state.index] === null){ alert('Choisis une réponse pour continuer.'); return; }
+    if(state.index < QUESTIONS.length - 1) renderQuestion(state.index + 1); else computeResult();
+  };
+  if(els.restartBtn) els.restartBtn.onclick = () => { state = { index:0, answers: new Array(QUESTIONS.length).fill(null) }; els.resultCard.style.display='none'; els.quizCard.style.display='block'; renderQuestion(0); };
+  if(els.reviewBtn) els.reviewBtn.onclick = () => { els.resultCard.style.display='none'; els.quizCard.style.display='block'; renderQuestion(0); };
+
+  // autoresize: post height to parent (iframe)
+  let last = 0;
+  function sendHeight(){
+    try{
+      const now = Date.now(); if(now - last < 120) return; last = now;
+      const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'quizHeight', height: h }, '*');
+    }catch(e){}
+  }
+
+  // initial render
+  renderQuestion(0);
+});
+</script>
+</body>
+</html>
